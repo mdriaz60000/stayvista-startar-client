@@ -1,7 +1,81 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FcGoogle } from 'react-icons/fc'
+import { imageUpload } from '../../api/Utills'
+import useAuth from '../../hooks/useAuth'
+import { getToken, saveUser } from '../../api/auth'
+import toast from "react-hot-toast"
+import { FaSpinner } from "react-icons/fa6";
 
 const SignUp = () => {
+  const { createUser, signInWithGoogle, updateUserProfile,loading} = useAuth()
+  
+  const navigate  = useNavigate()
+  const location =  useLocation()
+  const form = location?.state?.form?.pathname || "/"
+const handleSubmit = async (event) =>{
+  event.preventDefault()
+  const form = event.target ;
+  const name = form.name.value ;
+  const email = form.email.value ;
+  const password = form.password.value ;
+  //image upload
+  const image = form.image.files[0] ;
+    // const formData = new FormData()
+  // formData.append('image', image)
+  // try{
+  //   const {data} = await axios.post(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_imgbb_api_key}`,
+  //   formData
+  //   )
+  //   console.log(data)
+  // } catch (err) {
+  //    console.log(err)
+  // }
+  
+  try{
+    // image upload
+    const imageData = await imageUpload(image)
+    //user registration
+     const result = await createUser(email,password)
+     // save username, profile photo
+     await updateUserProfile(name, imageData?.data?.display_url)
+     //console.log(result)
+     //database
+     const dbResponse = await saveUser(result?.user)
+     await getToken(result?.user?.email)
+     console.log(dbResponse)
+      navigate(form,{replace:true})
+     toast.success('signUp success')
+
+  }catch(err){
+      // console.log(err)
+       toast.error('signUp err')
+  }
+ 
+
+  console.log({name, email, password})
+  
+
+}
+const handleGoogle = async () =>{ 
+  try{
+  
+    //user popup
+     const result = await signInWithGoogle()
+     //database
+     const dbResponse = await saveUser(result?.user)
+     await getToken(result?.user?.email)
+     console.log(dbResponse)
+     navigate(form,{replace:true})
+     toast.success('signIn success google')
+
+  }catch(err){
+      // console.log(err)
+       toast.error('google signIn err')
+  }
+
+
+}
+
   return (
     <div className='flex justify-center items-center min-h-screen'>
       <div className='flex flex-col max-w-md p-6 rounded-md sm:p-10 bg-gray-100 text-gray-900'>
@@ -10,6 +84,7 @@ const SignUp = () => {
           <p className='text-sm text-gray-400'>Welcome to StayVista</p>
         </div>
         <form
+        onSubmit={handleSubmit}
           noValidate=''
           action=''
           className='space-y-6 ng-untouched ng-pristine ng-valid'
@@ -77,7 +152,10 @@ const SignUp = () => {
               type='submit'
               className='bg-rose-500 w-full rounded-md py-3 text-white'
             >
-              Continue
+              {
+                loading? < FaSpinner className='animate-spin mx-auto' /> :  'Continue'
+              }
+            
             </button>
           </div>
         </form>
@@ -88,7 +166,7 @@ const SignUp = () => {
           </p>
           <div className='flex-1 h-px sm:w-16 dark:bg-gray-700'></div>
         </div>
-        <div className='flex justify-center items-center space-x-2 border m-3 p-2 border-gray-300 border-rounded cursor-pointer'>
+        <div onClick={handleGoogle} className='flex justify-center items-center space-x-2 border m-3 p-2 border-gray-300 border-rounded cursor-pointer'>
           <FcGoogle size={32} />
 
           <p>Continue with Google</p>
